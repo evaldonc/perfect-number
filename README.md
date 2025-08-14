@@ -32,14 +32,17 @@ All calls are audited into table `audit_logs` storing source IP, request path, r
 ## Tests
 - Unit tests for the perfect-number service.
 - Integration test using Testcontainers with Postgres.
-```bash
-mvn -q -DskipTests=false test
-```
+1. Start Postgres quickly with Docker Compose:
+   ```bash
+   docker-compose up -d db
+   ```
+2. Run tests:
+    ```bash
+    mvn -q -DskipTests=false test
+    ```
 
 ## Clean Architecture Structure (packages)
-- `domain` (entities, service interface)
-- `application` (use cases)
-- `infrastructure` (JPA, mappers, implementations)
-- `web` (controllers, DTOs)
 - `config` (OpenAPI, etc)
-```
+- `domain` (entities, service interface)
+- `infrastructure` (JPA, mappers, implementations, services)
+- `web` (controllers, DTOs)

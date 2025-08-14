@@ -1,13 +1,46 @@
 package dev.evaldo.perfectnumber.infrastructure.services;
 
 import dev.evaldo.perfectnumber.domain.PerfectNumberService;
+import dev.evaldo.perfectnumber.infrastructure.persistence.AuditLogEntity;
+import dev.evaldo.perfectnumber.infrastructure.persistence.AuditLogRepository;
+import dev.evaldo.perfectnumber.web.dto.PerfectNumbersResponse;
+import dev.evaldo.perfectnumber.web.dto.RangeRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class PerfectNumberServiceImpl implements PerfectNumberService {
+
+    private final AuditLogRepository auditLogRepository;
+
+    @Override
+    public Optional<PerfectNumbersResponse> processRange(RangeRequest request, HttpServletRequest http) {
+        Integer[] r = request.getRange();
+        if (r == null || r.length != 2) {
+            return Optional.empty();
+        }
+        int start = r[0];
+        int end = r[1];
+        List<Integer> perfects = findPerfectInRange(start, end);
+        List<Integer> primes = primesOf(perfects);
+        String primesCsv = primes.stream().map(String::valueOf).collect(Collectors.joining(","));
+        auditLogRepository.save(
+                AuditLogEntity.builder()
+                    .sourceIp(getClientIp(http))
+                    .requestPath(http.getRequestURI())
+                    .rangeStart(start)
+                    .rangeEnd(end)
+                    .primesCsv(primesCsv)
+                    .build());
+        return Optional.of(new PerfectNumbersResponse(perfects, perfects.size()));
+    }
 
     @Override
     public boolean isPerfect(int n) {
@@ -22,17 +55,6 @@ public class PerfectNumberServiceImpl implements PerfectNumberService {
             }
         }
         return sum == n;
-    }
-
-    @Override
-    public List<Integer> findPerfectInRange(int start, int end) {
-        int a = Math.min(start, end);
-        int b = Math.max(start, end);
-        List<Integer> result = new ArrayList<>();
-        for (int n = a; n <= b; n++) {
-            if (isPerfect(n)) result.add(n);
-        }
-        return result;
     }
 
     @Override
@@ -53,4 +75,23 @@ public class PerfectNumberServiceImpl implements PerfectNumberService {
         }
         return true;
     }
+
+    private List<Integer> findPerfectInRange(int start, int end) {
+        List<Integer> perfects = new ArrayList<>();
+        for (int i = start; i <= end; i++) {
+            if (isPerfect(i)) {
+                perfects.add(i);
+            }
+        }
+        return perfects;
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xf = request.getHeader("X-Forwarded-For");
+        if (xf != null && !xf.isBlank()) {
+            return xf.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
 }
