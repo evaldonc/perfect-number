@@ -1,0 +1,26 @@
+services:
+  db:
+    image: bitnami/postgresql:latest
+    container_name: perfect_db
+    environment:
+      - POSTGRES_DB=perfectDB
+      - POSTGRES_USERNAME=perfect
+      - POSTGRES_PASSWORD=perfect
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/bitnami/postgresql
+
+  app:
+    build: .
+    image: perfect-number-api:latest
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/perfectDB
+      - POSTGRES_USERNAME=perfect
+      - POSTGRES_PASSWORD=perfect
+    ports:
+      - "8080:8080"
+volumes:
+  db_data:
